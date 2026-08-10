@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+
+customer_churn_industry_level.csv
