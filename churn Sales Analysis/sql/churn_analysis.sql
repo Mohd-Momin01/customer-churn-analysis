@@ -157,17 +157,26 @@ Group by Churn_Reason
     Select * From customer_services
     where Tenure_Months is NULL
 
-SELECT
+SELECT count(*) as [Total Customer],
     CASE
         WHEN Tenure_Months < 15 THEN 'New'
         WHEN Tenure_Months >= 15 AND Tenure_Months < 30 THEN 'Early'
         WHEN Tenure_Months >= 30 AND Tenure_Months < 72 THEN 'Established'
         WHEN Tenure_Months >= 72 THEN 'Loyal'
-    END AS Tenure_Group
-FROM customer_services                   
+    END AS Tenure_Group,
+    SUM(CAST(c2.Churn_Flag AS int)) AS Churned_Customers
+FROM customer_services c1  join customer_behavior c2
+ON c1.Customer_ID=c2.Customer_ID
+group by    CASE
+        WHEN Tenure_Months < 15 THEN 'New'
+        WHEN Tenure_Months >= 15 AND Tenure_Months < 30 THEN 'Early'
+        WHEN Tenure_Months >= 30 AND Tenure_Months < 72 THEN 'Established'
+        WHEN Tenure_Months >= 72 THEN 'Loyal'
+    END 
+order by  SUM(CAST(c2.Churn_Flag AS int)) DESC
 
-Churn by Satisfaction Level
 
+--Churn by Satisfaction Level
 SELECT
     CASE
         WHEN Satisfaction_Score < 4 THEN 'Very Low'
@@ -190,14 +199,13 @@ ORDER BY  SUM(CAST(Churn_Flag AS INT)) DESC
 
 
 --Does payment delay behavior correlate with churn?
- -- Q34: Churn by Payment Delay
-
+Select min(payment_Delay_Days), max(payment_Delay_Days),avg(payment_Delay_Days) from customer_behavior
 SELECT
     CASE
-        WHEN Payment_Delay_Days <= 7 THEN 'Low'
-        WHEN Payment_Delay_Days >= 8 AND Payment_Delay_Days <= 15 THEN 'Medium'
-        WHEN Payment_Delay_Days >= 16 AND Payment_Delay_Days <= 30 THEN 'High'
-        WHEN Payment_Delay_Days > 30 THEN 'Critical'
+        WHEN Payment_Delay_Days <= 2 THEN 'Low'
+        WHEN Payment_Delay_Days >= 3 AND Payment_Delay_Days <= 5 THEN 'Medium'
+        WHEN Payment_Delay_Days >= 6 AND Payment_Delay_Days <= 8 THEN 'High'
+        WHEN Payment_Delay_Days >= 9 THEN 'Critical'
     END AS Payment_Delay_Risk,
     COUNT(*) AS Total_Customers,
     SUM(CAST(Churn_Flag AS INT)) AS Churned_Customer
@@ -205,12 +213,12 @@ FROM customer_services c1
 JOIN customer_behavior c2
     ON c1.Customer_ID = c2.Customer_ID
 GROUP BY
-    CASE
-        WHEN Payment_Delay_Days <= 7 THEN 'Low'
-        WHEN Payment_Delay_Days >= 8 AND Payment_Delay_Days <= 15 THEN 'Medium'
-        WHEN Payment_Delay_Days >= 16 AND Payment_Delay_Days <= 30 THEN 'High'
-        WHEN Payment_Delay_Days > 30 THEN 'Critical'
-    END
+   CASE
+        WHEN Payment_Delay_Days <= 2 THEN 'Low'
+        WHEN Payment_Delay_Days >= 3 AND Payment_Delay_Days <= 5 THEN 'Medium'
+        WHEN Payment_Delay_Days >= 6 AND Payment_Delay_Days <= 8 THEN 'High'
+        WHEN Payment_Delay_Days >= 9 THEN 'Critical'
+    END 
 ORDER BY SUM(CAST(Churn_Flag AS INT)) DESC;
 
 --Give management a churn summary by customer segment.
@@ -226,13 +234,16 @@ SELECT
     CAST(
         SUM(
             CASE
-                WHEN c2.Churn_Flag = 1
-                THEN c3.Estimated_LTV
+                WHEN c2.Churn_Flag = 1 THEN c3.Estimated_LTV
                 ELSE 0
             END
         )
         AS DECIMAL(14,2)
-    ) AS Revenue_At_Risk
+    ) AS LTV_At_Risk,
+  CAST(
+    SUM(CAST(c2.Churn_Flag AS INT)) * 100.0 / COUNT(*)
+    AS DECIMAL(5,0)
+) AS Churn_Rate
 
 FROM customer_profile c1
 
